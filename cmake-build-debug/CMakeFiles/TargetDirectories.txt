@@ -1,0 +1,3 @@
+/home/acmery/CLionProjects/thread_pool/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/acmery/CLionProjects/thread_pool/cmake-build-debug/CMakeFiles/thread_pool.dir
+/home/acmery/CLionProjects/thread_pool/cmake-build-debug/CMakeFiles/edit_cache.dir

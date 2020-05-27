@@ -31,7 +31,7 @@ struct NWORKER{
 
 //任务队列
 struct  NJOB{
-    void (*func)(struct NJOB *job);     //任务函数
+    void (*func)(void *a);     //任务函数
     void *user_data;
 
     struct NJOB *prev;
@@ -68,7 +68,7 @@ static void *nThreadCallBack(void *arg){
 
         pthread_mutex_unlock(&worker->pool->jobs_mutex);
 
-        job->func(job);
+        job->func(job->user_data);
     }
 
     free(worker);
@@ -91,7 +91,7 @@ int nThreadPoolCreate(nThreadPool *pool, int numWorkers){   //numWorkers:线程�
 
     //初始化workers
     for (int i = 0; i < numWorkers; ++i){
-        struct NWORKER *worker = (struct NWORKER*)malloc(sizeof(NWORKER));
+        struct NWORKER *worker = (struct NWORKER*)malloc(sizeof(struct NWORKER));
         if (worker == NULL){
             perror("malloc");
             return -2;
@@ -108,12 +108,12 @@ int nThreadPoolCreate(nThreadPool *pool, int numWorkers){   //numWorkers:线程�
         }
 
         LL_ADD(worker, pool->workers);
-
     }
+    return 1;
 }
 
 //销毁线程池
-int nThreadPoolDestroy(nThreadPool *pool){
+void nThreadPoolDestroy(nThreadPool *pool){
 
     struct NWORKER *worker = NULL;
     for (worker = pool->workers; worker != NULL; worker = worker->next){
@@ -126,13 +126,34 @@ int nThreadPoolDestroy(nThreadPool *pool){
 }
 
 //向线程池中添加任务
-void nThreadPoolPush(nThreadPool *pool, struct NJOB *job){
+void nThreadPoolAddJob(nThreadPool *pool, struct NJOB *job){
     //唤醒休眠的线程
 
-    pthread_mutex_lock(&pool->jobs_mutex);
 
     LL_ADD(job, pool->jobs);
     pthread_cond_signal(&pool->jobs_cond);
 
+}
+
+//面向用户的添加任务
+int nThreadPush(nThreadPool *pool,void (*func)(void *data), void *arg){
+
+    struct NJOB *job = (struct NJOB*)malloc(sizeof(struct NJOB));
+    if (job == NULL){
+        perror("malloc");
+        return -2;
+    }
+
+    memset(job, 0, sizeof(struct NJOB));
+
+    job->user_data = arg;
+    job->func = func;
+    job->next = NULL;
+    job->prev = NULL;
+
+    pthread_mutex_lock(&pool->jobs_mutex);
+    nThreadPoolAddJob(pool, job);
     pthread_mutex_unlock(&pool->jobs_mutex);
+
+    return 1;
 }

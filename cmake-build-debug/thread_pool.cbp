@@ -84,7 +84,10 @@
 				</MakeCommands>
 			</Target>
 		</Build>
-		<Unit filename="/home/acmery/CLionProjects/thread_pool/main.cpp">
+		<Unit filename="/home/acmery/CLionProjects/thread_pool/main.c">
+			<Option target="thread_pool"/>
+		</Unit>
+		<Unit filename="/home/acmery/CLionProjects/thread_pool/threadPool.h">
 			<Option target="thread_pool"/>
 		</Unit>
 		<Unit filename="/home/acmery/CLionProjects/thread_pool/CMakeLists.txt">

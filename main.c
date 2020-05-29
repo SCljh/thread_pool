@@ -17,8 +17,26 @@ int main(){
         return -1;
     }
     printf("线程池初始化成功\n");
-    for (int i = 0; i < 1000; ++i)
-        nThreadPush(pool, testFun, &i);
+    int i = 0;
+    for (i = 0; i < 1000; ++i) {
+        //nThreadPush(pool, testFun, &i);
+
+        struct NJOB *job = (struct NJOB*)malloc(sizeof(struct NJOB));
+        if (job == NULL){
+            perror("malloc");
+            return -2;
+        }
+
+        memset(job, 0, sizeof(struct NJOB));
+
+        job->user_data = malloc(sizeof(int));
+        *(int*)job->user_data = i;
+        job->func = testFun;
+        job->next = NULL;
+        job->prev = NULL;
+
+        nThreadPoolAddJob(pool, job);
+    }
 
     nThreadPoolDestroy(pool);
 }

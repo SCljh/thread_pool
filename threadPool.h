@@ -21,9 +21,10 @@
 
 //执行队列
 struct NWORKER{
-    pthread_t thread;
+    pthread_t threadid;
     struct NMANAGER *pool;
     int terminate;
+    int flag;
 
     struct NWORKER *prev;
     struct NWORKER *next;
@@ -31,7 +32,7 @@ struct NWORKER{
 
 //任务队列
 struct  NJOB{
-    void (*func)(void *a);     //任务函数
+    void (*func)(void *arg);     //任务函数
     void *user_data;
 
     struct NJOB *prev;
@@ -42,6 +43,9 @@ struct  NJOB{
 struct NMANAGER{
     struct NWORKER *workers;
     struct NJOB *jobs;
+
+    int sum_thread;
+    int free_thread;
 
     pthread_cond_t jobs_cond;           //线程条件等待
     pthread_mutex_t jobs_mutex;         //为任务加锁防止一个任务被两个线程执行
@@ -68,7 +72,14 @@ static void *nThreadCallBack(void *arg){
 
         pthread_mutex_unlock(&worker->pool->jobs_mutex);
 
+        worker->pool->free_thread--;
+        worker->flag = 1;
         job->func(job->user_data);
+        worker->flag = 0;
+        worker->pool->free_thread++;
+
+        free(job->user_data);
+        free(job);
     }
 
     free(worker);
@@ -100,10 +111,13 @@ int nThreadPoolCreate(nThreadPool *pool, int numWorkers){   //numWorkers:线程�
         memset(worker, 0, sizeof(struct NWORKER));
         worker->pool = pool;
 
-        int ret = pthread_create(&worker->thread, NULL, nThreadCallBack, worker);
+        int ret = pthread_create(&worker->threadid, NULL, nThreadCallBack, worker);
         if (ret){
             perror("pthread_create");
-            free(worker);
+            struct NWORKER *w = pool->workers;
+            for (w = pool->workers; w != NULL; w = w->next)
+                w->terminate = 1;
+            //free(worker);
             return -3;
         }
 
@@ -129,9 +143,10 @@ void nThreadPoolDestroy(nThreadPool *pool){
 void nThreadPoolAddJob(nThreadPool *pool, struct NJOB *job){
     //唤醒休眠的线程
 
-
+    pthread_mutex_lock(&pool->jobs_mutex);
     LL_ADD(job, pool->jobs);
     pthread_cond_signal(&pool->jobs_cond);
+    pthread_mutex_unlock(&pool->jobs_mutex);
 
 }
 
@@ -151,9 +166,8 @@ int nThreadPush(nThreadPool *pool,void (*func)(void *data), void *arg){
     job->next = NULL;
     job->prev = NULL;
 
-    pthread_mutex_lock(&pool->jobs_mutex);
+
     nThreadPoolAddJob(pool, job);
-    pthread_mutex_unlock(&pool->jobs_mutex);
 
     return 1;
 }

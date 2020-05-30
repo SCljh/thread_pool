@@ -53,6 +53,9 @@ struct NMANAGER{
 
 typedef  struct NMANAGER nThreadPool;
 
+int nThreadPoolDelWorker(nThreadPool *pool, int num);
+int nThreadPoolAddWorker(nThreadPool *pool, int num);
+
 static void *nThreadCallBack(void *arg){
     struct NWORKER *worker = (struct NWORKER*)arg;
 
@@ -76,6 +79,7 @@ static void *nThreadCallBack(void *arg){
         if ((float)(worker->pool->free_thread / worker->pool->sum_thread) > 0.8){
             nThreadPoolDelWorker(worker->pool, worker->pool->sum_thread - worker->pool->free_thread * 2);
         }
+
         worker->isWorking = 1;
         job->func(job->user_data);
         worker->isWorking = 0;
@@ -130,6 +134,8 @@ int nThreadPoolCreate(nThreadPool *pool, int numWorkers){   //numWorkers:线程�
 
         LL_ADD(worker, pool->workers);
     }
+    pool->sum_thread = numWorkers;
+    pool->free_thread = numWorkers;
     return 1;
 }
 
@@ -221,5 +227,6 @@ int nThreadPoolDelWorker(nThreadPool *pool, int num){
             worker->terminate = 1;
         ret++;
     }
+    pool->sum_thread -= ret;
     return ret;
 }

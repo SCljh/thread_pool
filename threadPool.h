@@ -24,7 +24,7 @@ struct NWORKER{
     pthread_t threadid;
     struct NMANAGER *pool;
     int terminate;
-    int flag;
+    int isWorking;
 
     struct NWORKER *prev;
     struct NWORKER *next;
@@ -73,10 +73,16 @@ static void *nThreadCallBack(void *arg){
         pthread_mutex_unlock(&worker->pool->jobs_mutex);
 
         worker->pool->free_thread--;
-        worker->flag = 1;
+        if ((float)(worker->pool->free_thread / worker->pool->sum_thread) > 0.8){
+            nThreadPoolDelWorker(worker->pool, worker->pool->sum_thread - worker->pool->free_thread * 2);
+        }
+        worker->isWorking = 1;
         job->func(job->user_data);
-        worker->flag = 0;
+        worker->isWorking = 0;
         worker->pool->free_thread++;
+        if ((float)(worker->pool->free_thread / worker->pool->sum_thread) < 0.4){
+            nThreadPoolAddWorker(worker->pool, worker->pool->free_thread * 2 - worker->pool->sum_thread);
+        }
 
         free(job->user_data);
         free(job);
@@ -120,6 +126,7 @@ int nThreadPoolCreate(nThreadPool *pool, int numWorkers){   //numWorkers:线程�
             //free(worker);
             return -3;
         }
+        worker->terminate = 0;
 
         LL_ADD(worker, pool->workers);
     }
@@ -170,4 +177,49 @@ int nThreadPush(nThreadPool *pool,void (*func)(void *data), void *arg){
     nThreadPoolAddJob(pool, job);
 
     return 1;
+}
+
+//线程池增加线程
+int nThreadPoolAddWorker(nThreadPool *pool, int num) {
+    int ret = 0;
+    for (int i = 0; i < num; ++i) {
+        struct NWORKER *worker = (struct NWORKER *) malloc(sizeof(struct NWORKER));
+        if (worker == NULL) {
+            perror("malloc");
+            return -2;
+        }
+
+        memset(worker, 0, sizeof(struct NWORKER));
+        worker->pool = pool;
+
+        int ret = pthread_create(&worker->threadid, NULL, nThreadCallBack, worker);
+        if (ret) {
+            printf("error: pthread_create\n");
+            struct NWORKER *w = pool->workers;
+            for (w = pool->workers; w != NULL; w = w->next)
+                w->terminate = 1;
+            //free(worker);
+            break;
+        }
+        worker->terminate = 0;
+
+        LL_ADD(worker, pool->workers);
+
+        ret++;
+    }
+    pool->sum_thread+=ret;
+    return ret;
+}
+
+//线程池减少线程
+int nThreadPoolDelWorker(nThreadPool *pool, int num){
+    if (num > pool->sum_thread) return -1;
+    int ret = 0;
+    struct NWORKER *worker = NULL;
+    for (worker = pool->workers; worker != NULL && ret < num; worker = worker->next){
+        if (!worker->isWorking)
+            worker->terminate = 1;
+        ret++;
+    }
+    return ret;
 }

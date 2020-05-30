@@ -19,7 +19,7 @@ int main(){
     printf("线程池初始化成功\n");
     int i = 0;
     for (i = 0; i < 1000; ++i) {
-        //nThreadPush(pool, testFun, &i);
+//        nThreadPush(pool, testFun, &i);
 
         struct NJOB *job = (struct NJOB*)malloc(sizeof(struct NJOB));
         if (job == NULL){

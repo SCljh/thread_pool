@@ -84,7 +84,7 @@ static void *nThreadCallBack(void *arg){
         job->func(job->user_data);
         worker->isWorking = 0;
         worker->pool->free_thread++;
-        if ((float)(worker->pool->free_thread / worker->pool->sum_thread) < 0.4){
+        if ((float)(worker->pool->free_thread / worker->pool->sum_thread) < 0.2){
             nThreadPoolAddWorker(worker->pool, worker->pool->free_thread * 2 - worker->pool->sum_thread);
         }
 
@@ -164,7 +164,7 @@ void nThreadPoolAddJob(nThreadPool *pool, struct NJOB *job){
 }
 
 //面向用户的添加任务
-int nThreadPush(nThreadPool *pool,void (*func)(void *data), void *arg){
+int nThreadPush(nThreadPool *pool,void (*func)(void *), void *arg, int len){
 
     struct NJOB *job = (struct NJOB*)malloc(sizeof(struct NJOB));
     if (job == NULL){
@@ -174,7 +174,8 @@ int nThreadPush(nThreadPool *pool,void (*func)(void *data), void *arg){
 
     memset(job, 0, sizeof(struct NJOB));
 
-    job->user_data = arg;
+    job->user_data = malloc(len);
+    memcpy(job->user_data, arg, len);
     job->func = func;
     job->next = NULL;
     job->prev = NULL;

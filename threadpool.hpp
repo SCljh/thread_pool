@@ -21,11 +21,11 @@ private:
         ThreadPool *pool;
     } *m_workers;
 
-public:
     struct NJOB{
         void (*func)(void *arg);     //任务函数
         void *user_data;
     };
+public:
     //线程池初始化
     //numWorkers:线程数量
     ThreadPool(int numWorkers, int max_jobs);

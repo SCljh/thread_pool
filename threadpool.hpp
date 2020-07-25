@@ -31,12 +31,14 @@ public:
     ThreadPool(int numWorkers, int max_jobs);
     //销毁线程池
     ~ThreadPool();
-    //向线程池中添加任务
-    bool addJob(NJOB* job);
     //面向用户的添加任务
     int pushJob(void (*func)(void *data), void *arg, int len);
-    static void* run(void *arg);
-    void threadLoop(void *arg);
+
+private:
+    //向线程池中添加任务
+    bool _addJob(NJOB* job);
+    static void* _run(void *arg);
+    void _threadLoop(void *arg);
 
 private:
     std::list<NJOB*> m_jobs_list;
@@ -69,7 +71,7 @@ ThreadPool::ThreadPool(int numWorkers, int max_jobs = 10) : m_sum_thread(numWork
 
         m_workers[i].pool = this;
 
-        int ret = pthread_create(&(m_workers[i].threadid), NULL, run, &m_workers[i]);
+        int ret = pthread_create(&(m_workers[i].threadid), NULL, _run, &m_workers[i]);
         if (ret){
             delete[] m_workers;
             perror("create worker fail\n");
@@ -93,7 +95,7 @@ ThreadPool::~ThreadPool(){
 }
 
 //向线程池中添加任务
-bool ThreadPool::addJob(NJOB *job) {
+bool ThreadPool::_addJob(NJOB *job) {
     pthread_mutex_lock(&m_jobs_mutex);
     if (m_jobs_list.size() >= m_max_jobs){
         pthread_mutex_unlock(&m_jobs_mutex);
@@ -120,17 +122,17 @@ int ThreadPool::pushJob(void (*func)(void *), void *arg, int len) {
     memcpy(job->user_data, arg, len);
     job->func = func;
 
-    addJob(job);
+    _addJob(job);
 
     return 1;
 }
 
-void* ThreadPool::run(void *arg) {
+void* ThreadPool::_run(void *arg) {
     NWORKER *worker = (NWORKER *)arg;
-    worker->pool->threadLoop(arg);
+    worker->pool->_threadLoop(arg);
 }
 
-void ThreadPool::threadLoop(void *arg) {
+void ThreadPool::_threadLoop(void *arg) {
     NWORKER *worker = (NWORKER*)arg;
     while (1){
         //线程只有两个状态：执行\等待

@@ -1,1 +1,0 @@
-/usr/bin/gcc -g   CMakeFiles/thread_pool.dir/main.c.o  -o thread_pool -lpthread 
